@@ -240,7 +240,7 @@
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {orders.map(order => (
+                  {orders.filter(o => o.status !== 'completed').map(order => (
                     <div 
                       key={order.firestoreId} 
                       className={`bg-white rounded-2xl p-5 shadow-sm border-2 transition-all flex flex-col justify-between ${

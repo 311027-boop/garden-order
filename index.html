@@ -204,20 +204,30 @@
         e.preventDefault();
         if (cart.length === 0) return;
 
-        const nextSeqNum = orders.length + 1;
-        const formattedSeq = '#' + String(nextSeqNum).padStart(3, '0');
+        // 找出目前所有訂單中最大的序號數字，避免重複或重置歸零的問題
+  let maxSeq = 0;
+  orders.forEach(o => {
+    if (o.seq) {
+      const num = parseInt(o.seq.replace('#', ''), 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  });
+  const nextSeqNum = maxSeq + 1;
+  const formattedSeq = '#' + String(nextSeqNum).padStart(3, '0');
 
-        const newOrder = {
-          id: 'ORD-' + Date.now().toString().slice(-4),
-          seq: formattedSeq,
-          customerName: customerName || '貴賓',
-          phone: customerPhone || '未提供',
-          items: cart,
-          total: cartTotalPrice,
-          status: 'pending',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          createdAt: Date.now()
-        };
+  const newOrder = {
+    id: 'ORD-' + Date.now().toString().slice(-4),
+    seq: formattedSeq,
+    customerName: customerName || '貴賓',
+    phone: customerPhone || '未提供',
+    items: cart,
+    total: cartTotalPrice,
+    status: 'pending',
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    createdAt: Date.now()
+  };
 
         try {
           const { collection, addDoc } = window.fs;

@@ -100,7 +100,7 @@
             ...docSnap.data()
           }));
 
-          fetched.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          fetched.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
           if (fetched.length > prevOrderCountRef.current && prevOrderCountRef.current !== 0) {
             playBellSound();

@@ -94,6 +94,7 @@
       const [soundEnabled, setSoundEnabled] = useState(true);
       const [showQrModal, setShowQrModal] = useState(false);
       const [customerUrl, setCustomerUrl] = useState('');
+      const [isSubmitting, setIsSubmitting] = useState(false);
 
       const prevOrderCountRef = useRef(0);
       const qrRef = useRef(null);
@@ -196,7 +197,10 @@
         e.preventDefault();
         if (cart.length === 0) return;
 
-        const formattedSeq = '#' + String(Date.now()).slice(-3) + Math.floor(Math.random() * 9 + 1);
+        const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
+        const snapshot = await window.fs.getDocs(ordersRef);
+        const nextSeqNum = snapshot.size + 1;
+        const formattedSeq = '#' + String(nextSeqNum).padStart(3, '0');
 
         const nowTime = Date.now();
         const newOrder = {

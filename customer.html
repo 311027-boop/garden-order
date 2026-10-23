@@ -157,6 +157,10 @@
             const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
             const docRef = await window.fs.addDoc(ordersRef, newOrder);
             setActiveOrder({ ...newOrder, firestoreId: docRef.id });
+
+            const myOrders = JSON.parse(localStorage.getItem('my_orders') || '[]');
+            myOrders.push({ firestoreId: docRef.id });
+            localStorage.setItem('my_orders', JSON.stringify(myOrders));
           } else {
             setActiveOrder(newOrder);
           }

@@ -185,31 +185,43 @@
             </div>
           </header>
 
-          {activeOrder && (
-            <div className="bg-amber-500 text-white p-5 rounded-2xl shadow-lg mb-6 relative overflow-hidden">
-              <div className="text-xs bg-amber-700/60 inline-block px-2.5 py-1 rounded-lg font-mono font-bold mb-2">
-                您的取餐序號：<span className="text-amber-200 text-xl">{activeOrder.seq}</span>
-              </div>
-              <div className="text-sm font-bold mb-1">訂購人：{activeOrder.customerName} ({activeOrder.phone})</div>
-              <div className="text-xs font-bold bg-white/20 p-2 rounded-lg mb-3">
-                合計金額：${activeOrder.total} 元
-              </div>
+{(() => {
+    const saved = JSON.parse(localStorage.getItem('my_orders') || '[]');
+    if (saved.length === 0 && !activeOrder) return null;
 
-              <div className="bg-white text-slate-800 p-3 rounded-xl shadow-inner flex items-center justify-between text-center font-bold">
-                <div className={`text-xs ${activeOrder.status === 'pending' ? 'text-amber-600 font-extrabold scale-105' : 'text-slate-400'}`}>
-                  📥 已收到
+    return (
+        <div className="mt-6 space-y-4">
+            <h3 className="text-base font-bold text-amber-800 flex items-center gap-2">
+                <span>🛒 我的點餐紀錄與狀態</span>
+            </h3>
+
+            {activeOrder && (
+                <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden">
+                    <div className="flex justify-between items-center mb-3">
+                        <span className="text-xl font-black bg-white/20 px-3 py-1 rounded-xl font-mono">
+                            {activeOrder.seq}
+                        </span>
+                        <span className="text-xs font-bold bg-white/30 px-3 py-1 rounded-full animate-pulse">
+                            {activeOrder.status === 'ready' ? '🔔 請前來取餐！' : activeOrder.status === 'preparing' ? '🍳 製作中' : '⌛ 已收到訂單'}
+                        </span>
+                    </div>
+                    <div className="text-xs space-y-1 mb-3 opacity-90">
+                        <div>訂購人：{activeOrder.customerName}</div>
+                        {activeOrder.items?.map((it, idx) => (
+                            <div key={idx} className="flex justify-between">
+                                <span>{it.name}</span>
+                                <span>${it.price}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="text-right font-bold text-sm border-t border-white/20 pt-2">
+                        合計：${activeOrder.total}
+                    </div>
                 </div>
-                <div className="text-slate-300 text-xs">➔</div>
-                <div className={`text-xs ${activeOrder.status === 'preparing' ? 'text-amber-600 font-extrabold scale-105' : 'text-slate-400'}`}>
-                  🔥 製作中
-                </div>
-                <div className="text-slate-300 text-xs">➔</div>
-                <div className={`text-xs ${activeOrder.status === 'ready' ? 'bg-emerald-500 text-white px-2 py-1 rounded-md animate-bounce' : activeOrder.status === 'completed' ? 'text-slate-400' : 'text-slate-400'}`}>
-                  {activeOrder.status === 'completed' ? '✅ 已取餐' : '🔔 請取餐'}
-                </div>
-              </div>
-            </div>
-          )}
+            )}
+        </div>
+    );
+})()}
 
           <div className="space-y-4">
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">

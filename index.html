@@ -23,8 +23,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+    import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, getDocs, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     const firebaseConfig = {
       apiKey: "AIzaSyAC_ariYuuW3a-DKyO20ZFwbFlvb2SZm_0",
       authDomain: "garden-order-afeab.firebaseapp.com",
@@ -57,7 +56,16 @@
     window.db = db;
     window.auth = auth;
     window.appId = appId;
-    window.fs = { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, getDocs };
+    window.fs = { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, getDocs, runTransaction };
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  doc,
+  deleteDoc,
+  getDocs,
+  runTransaction
+};
   </script>
 
   <script type="text/babel">

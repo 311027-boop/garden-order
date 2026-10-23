@@ -101,9 +101,9 @@
           }));
 
           fetched.sort((a, b) => {
-             const seqA = Number((a.seq || '').replace('#', '')) || 0;
-             const seqB = Number((b.seq || '').replace('#', '')) || 0;
-             return seqA - seqB;
+             const numA = Number(String(a.seq || '').replace(/\D/g, '')) || 0;
+             const numB = Number(String(b.seq || '').replace(/\D/g, '')) || 0;
+             return numA - numB;
           });
 
           if (fetched.length > prevOrderCountRef.current && prevOrderCountRef.current !== 0) {

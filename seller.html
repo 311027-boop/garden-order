@@ -101,8 +101,9 @@
           }));
 
           fetched.sort((a, b) => {
-
-            return (b.seq || 0) - (a.seq || 0);
+            const seqA = Number(a.seq) || 0;
+            const seqB = Number(b.seq) || 0;
+            return seqB - seqA;
           });
 
           if (fetched.length > prevOrderCountRef.current && prevOrderCountRef.current !== 0) {

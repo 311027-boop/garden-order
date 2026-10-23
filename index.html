@@ -147,7 +147,7 @@
             ...docSnap.data()
           }));
 
-          fetchedOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          fetchedOrders.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 
           if (fetchedOrders.length > prevOrderCountRef.current && prevOrderCountRef.current !== 0) {
             playBellSound();
@@ -196,8 +196,8 @@
         e.preventDefault();
         if (cart.length === 0) return;
 
-        const nextSeqNum = orders.length + 1;
-        const formattedSeq = '#' + String(nextSeqNum).padStart(3, '0');
+        const nowTime = Date.now();
+        const formattedSeq = '#' + String(nowTime).slice(-3);
 
         const newOrder = {
           id: 'ORD-' + Date.now().toString().slice(-4),

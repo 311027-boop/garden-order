@@ -101,14 +101,9 @@
           }));
 
           fetched.sort((a, b) => {
-             const seqA = Number(String(a.seq || '').replace(/\D/g, '')) || 0;
-             const seqB = Number(String(b.seq || '').replace(/\D/g, '')) || 0;
-        
-             if (seqA !== seqB) {
+             const seqA = Number((a.seq || '').replace('#', '')) || 0;
+             const seqB = Number((b.seq || '').replace('#', '')) || 0;
              return seqA - seqB;
-             }
-        
-             return (a.createdAt || '').localeCompare(b.createdAt || '');
           });
 
           if (fetched.length > prevOrderCountRef.current && prevOrderCountRef.current !== 0) {

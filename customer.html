@@ -86,26 +86,23 @@
       const [isSubmitting, setIsSubmitting] = useState(false);
 
       // 即時監聽個人訂單狀態變更
-      const [myOrdersList, setMyOrdersList] = React.useState([]);
+      const [currentOrderId, setCurrentOrderId] = React.useState(() => localStorage.getItem('current_order_id') || '');
+      const [order, setOrder] = React.useState(null);
 
-    useEffect(() => {
-        if (!window.db || !window.fs) return;
+      React.useEffect(() => {
+          if (!currentOrderId || !window.db || !window.fs) return;
 
-        const saved = JSON.parse(localStorage.getItem('my_orders') || '[]');
-        if (saved.length === 0) return;
+          const orderRef = window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'orders', currentOrderId);
+          const unsub = window.fs.onSnapshot(orderRef, (docSnap) => {
+              if (docSnap.exists()) {
+                  setOrder({ firestoreId: docSnap.id, ...docSnap.data() });
+              } else {
+                  setOrder(null);
+              }
+           });
 
-        const unsubs = saved.map(item => {
-            const orderRef = window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'orders', item.firestoreId);
-            return window.fs.onSnapshot(orderRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    setMyOrdersList(prev => {
-                        const filtered = prev.filter(o => o.firestoreId !== item.firestoreId);
-                        return [{ ...data, firestoreId: item.firestoreId }, ...filtered];
-                    });
-                }
-            });
-        });
+           return () => unsub();
+       }, [currentOrderId]);
 
         return () => {
             unsubs.forEach(unsub => unsub && unsub());
@@ -197,39 +194,34 @@
             </div>
           </header>
 
-{myOrdersList.length > 0 && (
-    <div className="mt-6 space-y-4">
-        <h3 className="text-base font-bold text-amber-800 flex items-center gap-2">
-            <span>🛒 我的點餐紀錄（共 {myOrdersList.length} 筆）</span>
-        </h3>
-
-        {myOrdersList.map((ord) => (
-            <div key={ord.firestoreId} className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden mb-3">
-                <div className="flex justify-between items-center mb-3">
-                    <span className="text-xl font-black bg-white/20 px-3 py-1 rounded-xl font-mono">
-                        {ord.seq}
-                    </span>
-                    <span className="text-xs font-bold bg-white/30 px-3 py-1 rounded-full animate-pulse">
-                        {ord.status === 'ready' ? '🔔 請前來取餐！' : ord.status === 'preparing' ? '🍳 製作中' : ord.status === 'completed' ? '✅ 已取餐' : '⌛ 已收到訂單'}
-                    </span>
-                </div>
-                <div className="text-xs space-y-1 mb-3 opacity-90">
-                    <div>訂購人：{ord.customerName} ({ord.phone})</div>
-                    {ord.items?.map((it, idx) => (
-                        <div key={idx} className="flex justify-between">
-                            <span>{it.name}</span>
-                            <span>${it.price}</span>
-                        </div>
-                    ))}
-                </div>
-                <div className="text-right font-bold text-sm border-t border-white/20 pt-2">
-                    合計：${ord.total} 元
-                </div>
+{order ? (
+        <div className="mt-6 bg-gradient-to-r from-amber-500 to-amber-600 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden mb-3">
+            <div className="flex justify-between items-center mb-3">
+                <span className="text-xl font-black bg-white/20 px-3 py-1 rounded-xl font-mono">
+                    {order.seq}
+                </span>
+                <span className="text-xs font-bold bg-white/30 px-3 py-1 rounded-full animate-pulse">
+                    {order.status === 'ready' ? '🔔 請前來取餐！' : order.status === 'preparing' ? '⏳ 製作中' : order.status === 'completed' ? '✅ 已取餐' : '⏳ 已收到訂單'}
+                </span>
             </div>
-        ))}
-    </div>
-)}
-
+            <div className="text-xs space-y-1 mb-3 opacity-90">
+                <div>訂購人：{order.customerName} ({order.phone})</div>
+                {order.items?.map((it, idx) => (
+                    <div key={idx} className="flex justify-between">
+                        <span>{it.name}</span>
+                        <span>${it.price}</span>
+                    </div>
+                ))}
+            </div>
+            <div className="text-right font-bold text-sm border-t border-white/20 pt-2">
+                合計：${order.total} 元
+            </div>
+        </div>
+    ) : (
+        <div className="mt-6 text-center text-amber-800 py-6 bg-amber-50 rounded-2xl">
+            目前沒有進行中的訂單
+        </div>
+    )}
           <div className="space-y-4">
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               {['全部', '主食', '關東煮', '蔬菜', '套餐'].map(cat => (

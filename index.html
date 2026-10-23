@@ -148,7 +148,11 @@
             ...docSnap.data()
           }));
 
-          fetchedOrders.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+          fetchedOrders.sort((a, b) => {
+            const numA = Number(String(a.seq || '').replace(/\D/g, '')) || 0;
+            const numB = Number(String(b.seq || '').replace(/\D/g, '')) || 0;
+            return numA - numB;
+          });   
 
           if (fetchedOrders.length > prevOrderCountRef.current && prevOrderCountRef.current !== 0) {
             playBellSound();

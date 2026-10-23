@@ -133,11 +133,25 @@
 
         try {
           let seqNum = 1;
-          if (window.db && window.fs) {
-            const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
-            const snapshot = await window.fs.getDocs(ordersRef);
-            seqNum = snapshot.size + 1;
-          }
+if (window.db && window.fs) {
+  const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
+  const snapshot = await window.fs.getDocs(ordersRef);
+  
+  if (!snapshot.empty) {
+    let maxSeq = 0;
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      // 嘗試從現有訂單的 seq 欄位（例如 "#008"）解析出數字
+      if (data.seq) {
+        const num = parseInt(data.seq.replace('#', ''), 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+    });
+    seqNum = maxSeq + 1;
+  }
+}
 
           const formattedSeq = '#' + String(seqNum).padStart(3, '0');
 

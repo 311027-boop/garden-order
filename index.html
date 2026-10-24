@@ -483,21 +483,13 @@
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {orders.map((order) => {
-                    
-                   const isSpicy = order.items && order.items.some(item => 
-                     item.options && item.options.some(opt => opt.includes('麻辣'))
-                   );
-                   return (
-                     <div
-                        key={order.firestoreId || order.id}
-                        className={`p-5 shadow-md border-2 transition-all flex flex-col justify-between rounded-2xl ${
-                          isSpicy 
-                            ? 'bg-red-50 border-red-300 ring-2 ring-red-100 text-slate-800' 
-                            : 'bg-white border-slate-200 text-slate-800'
-                        } ${
-                          order.status === 'ready' ? '!border-emerald-500 !bg-emerald-50/40' :
-                          order.status === 'preparing' ? '!border-amber-400' : ''
+                  {orders.map(order => (
+                    <div 
+                      key={order.firestoreId || order.id} 
+                      className={`bg-white rounded-2xl p-5 shadow-sm border-2 transition-all flex flex-col justify-between ${
+                        order.status === 'ready' ? 'border-emerald-500 bg-emerald-50/20' :
+                        order.status === 'preparing' ? 'border-amber-400 bg-amber-50/20' : 
+                        order.status === 'completed' ? 'border-slate-200 opacity-60' : 'border-red-400 animate-pulse'
                       }`}
                     >
                       <div>
@@ -573,7 +565,7 @@
                     </div>
                   ))}
                 </div>
-              })}
+              )}
             </div>
           )}
 
@@ -700,3 +692,6 @@
   </script>
 </body>
 </html>
+```
+
+您有其他需要微調的功能（例如新增餐點項目、調整價格或介面配色）嗎？

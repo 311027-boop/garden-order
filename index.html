@@ -199,35 +199,34 @@
 
       const submitOrder = async (e) => {
         e.preventDefault();
-        if (cart.length === 0) return;
+        if (cart.length === 0 || isSubmitting) return;
 
-        const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
-        const snapshot = await window.fs.getDocs(ordersRef);
-        const nextSeqNum = snapshot.size + 1;
-        const formattedSeq = '#' + String(nextSeqNum).padStart(3, '0');
-
-        const nowTime = Date.now();
-        const newOrder = {
-          id: 'ORD-' + Date.now().toString().slice(-4),
-          seq: formattedSeq,
-          customerName: customerName || '貴賓',
-          phone: customerPhone || '未提供',
-          items: cart,
-          total: cartTotalPrice,
-          status: 'pending',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          createdAt: Date.now()
-        };
-
+        setIsSubmitting(true);
         try {
-          const { collection, addDoc } = window.fs;
-          const ordersRef = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
-          const docRef = await addDoc(ordersRef, newOrder);
-          
+          const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
+          const snapshot = await window.fs.getDocs(ordersRef);
+          const nextSeqNum = snapshot.size + 1;
+          const formattedSeq = '#' + String(nextSeqNum).padStart(3, '0');
+
+          const newOrder = {
+            id: 'ORD-' + Date.now().toString().slice(-4),
+            seq: formattedSeq,
+            customerName: customerName || '貴賓',
+            phone: customerPhone || '未提供',
+            items: cart,
+            total: cartTotalPrice,
+            status: 'pending',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            createdAt: Date.now()
+          };
+
+          const docRef = await window.fs.addDoc(ordersRef, newOrder);
           setActiveOrder({ ...newOrder, firestoreId: docRef.id });
           setCart([]);
         } catch (err) {
           console.error("新增訂單失敗:", err);
+        } finally {
+          setIsSubmitting(false);
         }
       };
 
@@ -421,9 +420,10 @@
                       </div>
                       <button
                         type="submit"
-                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold py-3 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-sm"
+                        disabled={isSubmitting}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-300 text-white font-extrabold py-3 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 text-sm"
                       >
-                        <i className="fa-solid fa-paper-plane"></i> 送出訂單 (${cartTotalPrice} 元)
+                        <i className="fa-solid fa-paper-plane"></i> {isSubmitting ? '傳送中...' : `送出訂單 (${cartTotalPrice} 元)`}
                       </button>
                     </form>
                   )}
@@ -483,87 +483,97 @@
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {orders.map(order => (
-                    <div 
-                      key={order.firestoreId || order.id} 
-                      className={`bg-white rounded-2xl p-5 shadow-sm border-2 transition-all flex flex-col justify-between ${
-                        order.status === 'ready' ? 'border-emerald-500 bg-emerald-50/20' :
-                        order.status === 'preparing' ? 'border-amber-400 bg-amber-50/20' : 
-                        order.status === 'completed' ? 'border-slate-200 opacity-60' : 'border-red-400 animate-pulse'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg font-black bg-amber-500 text-white px-2.5 py-0.5 rounded-xl font-mono shadow-sm">
-                              {order.seq}
-                            </span>
-                            <div>
-                              <span className="font-extrabold text-slate-800 text-sm block">{order.customerName}</span>
-                              <span className="text-[11px] text-slate-400 font-medium">末三碼: {order.phone}</span>
-                            </div>
-                          </div>
-                          <span className="text-xs text-slate-400 font-mono">{order.time}</span>
-                        </div>
+                  {orders.map(order => {
+                    // 🌶️ 檢查是否有麻辣湯底
+                    const isSpicy = order.items && order.items.some(item => 
+                      item.options && item.options.some(opt => opt.includes('麻辣'))
+                    );
 
-                        <div className="space-y-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                          {order.items.map((it, idx) => (
-                            <div key={idx} className="flex justify-between text-xs items-start">
+                    return (
+                      <div 
+                        key={order.firestoreId || order.id} 
+                        className={`p-5 shadow-md border-2 transition-all flex flex-col justify-between rounded-2xl ${
+                          isSpicy 
+                            ? 'bg-red-50 border-red-300 ring-2 ring-red-100 text-slate-800' 
+                            : 'bg-white border-slate-200 text-slate-800'
+                        } ${
+                          order.status === 'ready' ? '!border-emerald-500 !bg-emerald-50/40' :
+                          order.status === 'preparing' ? '!border-amber-400' : ''
+                        }`}
+                      >
+                        <div>
+                          <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-black bg-amber-500 text-white px-2.5 py-0.5 rounded-xl font-mono shadow-sm">
+                                {order.seq}
+                              </span>
                               <div>
-                                <span className="font-bold text-slate-800">{it.icon} {it.name}</span>
-                                <div className="flex flex-wrap gap-1 mt-0.5">
-                                  {it.options && it.options.length > 0 && (
-                                    <span className="text-[10px] text-amber-700 font-medium">
-                                      {it.options.join(', ')}
-                                    </span>
-                                  )}
-                                </div>
+                                <span className="font-extrabold text-slate-800 text-sm block">{order.customerName}</span>
+                                <span className="text-[11px] text-slate-400 font-medium">末三碼: {order.phone}</span>
                               </div>
-                              <span className="font-bold text-slate-600">${it.price}</span>
                             </div>
-                          ))}
+                            <span className="text-xs text-slate-400 font-mono">{order.time}</span>
+                          </div>
 
-                          <div className="border-t border-slate-200 pt-2 mt-2 flex justify-between font-black text-slate-800 text-xs">
-                            <span>合計金額</span>
-                            <span className="text-amber-600 text-sm">${order.total}</span>
+                          <div className="space-y-2 mb-4 bg-slate-50/80 p-3 rounded-xl border border-slate-100">
+                            {order.items.map((it, idx) => (
+                              <div key={idx} className="flex justify-between text-xs items-start">
+                                <div>
+                                  <span className="font-bold text-slate-800">{it.icon} {it.name}</span>
+                                  <div className="flex flex-wrap gap-1 mt-0.5">
+                                    {it.options && it.options.length > 0 && (
+                                      <span className={`text-[10px] font-bold ${it.options.some(o => o.includes('麻辣')) ? 'text-red-600 bg-red-100 px-1.5 py-0.5 rounded' : 'text-amber-700'}`}>
+                                        {it.options.join(', ')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="font-bold text-slate-600">${it.price}</span>
+                              </div>
+                            ))}
+
+                            <div className="border-t border-slate-200 pt-2 mt-2 flex justify-between font-black text-slate-800 text-xs">
+                              <span>合計金額</span>
+                              <span className="text-amber-600 text-sm">${order.total}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="grid grid-cols-3 gap-1.5 pt-2">
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'preparing', order.firestoreId)}
-                          className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                            order.status === 'preparing' 
-                              ? 'bg-amber-500 text-white shadow' 
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          製作中
-                        </button>
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'ready', order.firestoreId)}
-                          className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                            order.status === 'ready' 
-                              ? 'bg-emerald-500 text-white shadow animate-bounce' 
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          可取餐
-                        </button>
-                        <button
-                          onClick={() => updateOrderStatus(order.id, 'completed', order.firestoreId)}
-                          className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                            order.status === 'completed' 
-                              ? 'bg-slate-400 text-white' 
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          已完成
-                        </button>
+                        <div className="grid grid-cols-3 gap-1.5 pt-2">
+                          <button
+                            onClick={() => updateOrderStatus(order.id, 'preparing', order.firestoreId)}
+                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                              order.status === 'preparing' 
+                                ? 'bg-amber-500 text-white shadow' 
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            製作中
+                          </button>
+                          <button
+                            onClick={() => updateOrderStatus(order.id, 'ready', order.firestoreId)}
+                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                              order.status === 'ready' 
+                                ? 'bg-emerald-500 text-white shadow animate-bounce' 
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            可取餐
+                          </button>
+                          <button
+                            onClick={() => updateOrderStatus(order.id, 'completed', order.firestoreId)}
+                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                              order.status === 'completed' 
+                                ? 'bg-slate-400 text-white' 
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            已完成
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -615,6 +625,31 @@
             </div>
           )}
 
+          {/* 攤位 QR Code Modal */}
+          {showQrModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl relative">
+                <button 
+                  onClick={() => setShowQrModal(false)}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+                <h3 className="text-xl font-black text-amber-700">📱 顧客掃碼點餐</h3>
+                <p className="text-xs text-slate-500">出示此 QR Code 供現場顧客用手機掃描即可直接點餐！</p>
+                <div className="flex justify-center p-3 bg-amber-50 rounded-2xl border border-amber-200">
+                  <div ref={qrRef}></div>
+                </div>
+                <button
+                  onClick={() => setShowQrModal(false)}
+                  className="w-full bg-amber-500 text-white font-bold py-2.5 rounded-xl text-sm shadow"
+                >
+                  關閉視窗
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* 湯底選單 Modal */}
           {selectedItem && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -652,35 +687,11 @@
                   <span className="font-black text-xl text-amber-600">${selectedItem.price}</span>
                   <button
                     onClick={addToCart}
-                    className="bg-amber-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow hover:bg-amber-600"
+                    className="bg-amber-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow"
                   >
                     加入購物車
                   </button>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* QR Code Modal */}
-          {showQrModal && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 relative text-center">
-                <button onClick={() => setShowQrModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                  <i className="fa-solid fa-xmark text-xl"></i>
-                </button>
-                <h3 className="text-xl font-black text-amber-700">顧客線上點餐 QR Code</h3>
-                <p className="text-xs text-slate-500">將此 QR Code 印出放在攤位前供顧客掃碼</p>
-
-                <div className="bg-amber-50 p-6 rounded-2xl border-2 border-dashed border-amber-300 flex justify-center">
-                  <div ref={qrRef} className="p-2 bg-white rounded-xl shadow-md"></div>
-                </div>
-
-                <button
-                  onClick={() => window.print()}
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-md"
-                >
-                  <i className="fa-solid fa-print mr-1"></i> 列印 QR Code 海報
-                </button>
               </div>
             </div>
           )}
@@ -692,6 +703,3 @@
   </script>
 </body>
 </html>
-```
-
-您有其他需要微調的功能（例如新增餐點項目、調整價格或介面配色）嗎？

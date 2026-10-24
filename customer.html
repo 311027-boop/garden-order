@@ -86,28 +86,23 @@
       const [isSubmitting, setIsSubmitting] = useState(false);
 
       // 即時監聽個人訂單狀態變更
-      const [currentOrderId, setCurrentOrderId] = React.useState(() => localStorage.getItem('current_order_id') || '');
-      const [order, setOrder] = React.useState(null);
+      const [currentOrderId, setCurrentOrderId] = useState(() => localStorage.getItem('current_order_id') || '');
+      const [order, setOrder] = useState(null);
 
-      React.useEffect(() => {
-          if (!currentOrderId || !window.db || !window.fs) return;
+      useEffect(() => {
+        if (!currentOrderId || !window.db || !window.fs) return;
 
-          const orderRef = window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'orders', currentOrderId);
-          const unsub = window.fs.onSnapshot(orderRef, (docSnap) => {
-              if (docSnap.exists()) {
-                  setOrder({ firestoreId: docSnap.id, ...docSnap.data() });
-              } else {
-                  setOrder(null);
-              }
-           });
+        const orderRef = window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'orders', currentOrderId);
+        const unsub = window.fs.onSnapshot(orderRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setOrder({ firestoreId: docSnap.id, ...docSnap.data() });
+          } else {
+            setOrder(null);
+          }
+        });
 
-           return () => unsub();
-       }, [currentOrderId]);
-
-        return () => {
-            unsubs.forEach(unsub => unsub && unsub());
-        };
-    }, [activeOrder]);
+        return () => unsub();
+      }, [currentOrderId]);
 
       const openOptionModal = (item) => {
         setSelectedItem(item);
@@ -166,6 +161,8 @@
             const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
             const docRef = await window.fs.addDoc(ordersRef, newOrder);
             setActiveOrder({ ...newOrder, firestoreId: docRef.id });
+            setCurrentOrderId(docRef.id);
+            localStorage.setItem('current_order_id', docRef.id);
 
             const myOrders = JSON.parse(localStorage.getItem('my_orders') || '[]');
             myOrders.push({ firestoreId: docRef.id });
@@ -194,35 +191,36 @@
             </div>
           </header>
 
-{order ? (
-        <div className="mt-6 bg-gradient-to-r from-amber-500 to-amber-600 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden mb-3">
-            <div className="flex justify-between items-center mb-3">
+          {order ? (
+            <div className="mt-6 bg-gradient-to-r from-amber-500 to-amber-600 text-white p-5 rounded-2xl shadow-lg relative overflow-hidden mb-3">
+              <div className="flex justify-between items-center mb-3">
                 <span className="text-xl font-black bg-white/20 px-3 py-1 rounded-xl font-mono">
-                    {order.seq}
+                  {order.seq}
                 </span>
                 <span className="text-xs font-bold bg-white/30 px-3 py-1 rounded-full animate-pulse">
-                    {order.status === 'ready' ? '🔔 請前來取餐！' : order.status === 'preparing' ? '⏳ 製作中' : order.status === 'completed' ? '✅ 已取餐' : '⏳ 已收到訂單'}
+                  {order.status === 'ready' ? '🔔 請前來取餐！' : order.status === 'preparing' ? '⏳ 製作中' : order.status === 'completed' ? '✅ 已取餐' : '⏳ 已收到訂單'}
                 </span>
-            </div>
-            <div className="text-xs space-y-1 mb-3 opacity-90">
+              </div>
+              <div className="text-xs space-y-1 mb-3 opacity-90">
                 <div>訂購人：{order.customerName} ({order.phone})</div>
                 {order.items?.map((it, idx) => (
-                    <div key={idx} className="flex justify-between">
-                        <span>{it.name}</span>
-                        <span>${it.price}</span>
-                    </div>
+                  <div key={idx} className="flex justify-between">
+                    <span>{it.name} <span className="opacity-75">({it.options?.join('/')})</span></span>
+                    <span>${it.price}</span>
+                  </div>
                 ))}
-            </div>
-            <div className="text-right font-bold text-sm border-t border-white/20 pt-2">
+              </div>
+              <div className="text-right font-bold text-sm border-t border-white/20 pt-2">
                 合計：${order.total} 元
+              </div>
             </div>
-        </div>
-    ) : (
-        <div className="mt-6 text-center text-amber-800 py-6 bg-amber-50 rounded-2xl">
-            目前沒有進行中的訂單
-        </div>
-    )}
-          <div className="space-y-4">
+          ) : (
+            <div className="mt-6 text-center text-amber-800 py-6 bg-amber-50 rounded-2xl border border-amber-200">
+              目前沒有進行中的訂單
+            </div>
+          )}
+
+          <div className="space-y-4 mt-4">
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               {['全部', '主食', '關東煮', '蔬菜', '套餐'].map(cat => (
                 <button

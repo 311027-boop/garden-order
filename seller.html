@@ -166,7 +166,7 @@
         }
       };
 
-      const activeOrders = orders;
+      const activeOrders = orders.filter(o => o.status !== 'completed');
       const completedOrders = orders.filter(o => o.status === 'completed');
       const readyOrders = orders.filter(o => o.status === 'ready');
       const grandTotalRevenue = completedOrders.reduce((sum, o) => sum + (o.total || 0), 0);

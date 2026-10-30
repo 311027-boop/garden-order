@@ -593,4 +593,174 @@
                               </div>
                             ))}
 
-                            <div className="border-t border-slate-20
+                            <div className="border-t border-slate-200 pt-2 mt-2 flex justify-between font-black text-slate-800 text-xs">
+                              <span>合計金額</span>
+                              <span className="text-amber-600 text-sm">${order.total}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-1.5 pt-2">
+                          <button
+                            onClick={() => updateOrderStatus(order.id, 'preparing', order.firestoreId)}
+                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                              order.status === 'preparing' 
+                                ? 'bg-amber-500 text-white shadow' 
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            製作中
+                          </button>
+                          <button
+                            onClick={() => updateOrderStatus(order.id, 'ready', order.firestoreId)}
+                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                              order.status === 'ready' 
+                                ? 'bg-emerald-500 text-white shadow animate-bounce' 
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            可取餐
+                          </button>
+                          <button
+                            onClick={() => updateOrderStatus(order.id, 'completed', order.firestoreId)}
+                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
+                              order.status === 'completed' 
+                                ? 'bg-slate-400 text-white' 
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                          >
+                            已完成
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 視圖三：叫號大螢幕 */}
+          {view === 'display' && !isCustomerUrl && (
+            <div className="space-y-6">
+              <div className="bg-slate-900 text-white p-6 rounded-3xl text-center shadow-xl">
+                <h2 className="text-3xl font-black text-amber-400 mb-2">📢 園遊會現場叫號看板</h2>
+                <p className="text-sm text-slate-400">請憑您的「取餐序號」至攤位領取美味餐點！</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-emerald-500 text-white rounded-3xl p-6 shadow-lg">
+                  <h3 className="text-xl font-black mb-4 flex items-center gap-2 border-b border-emerald-400 pb-3">
+                    <i className="fa-solid fa-bell animate-bounce"></i> 請來取餐 (Ready)
+                  </h3>
+                  {readyOrders.length === 0 ? (
+                    <p className="text-emerald-100 text-center py-10 font-bold">目前無等候取餐序號</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-4">
+                      {readyOrders.map(o => (
+                        <div key={o.firestoreId || o.id} className="bg-white text-emerald-700 font-mono font-black text-4xl px-6 py-3 rounded-2xl shadow-md animate-pulse">
+                          {o.seq}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-amber-500 text-white rounded-3xl p-6 shadow-lg">
+                  <h3 className="text-xl font-black mb-4 flex items-center gap-2 border-b border-amber-400 pb-3">
+                    <i className="fa-solid fa-fire-burner"></i> 準備中 (Preparing)
+                  </h3>
+                  {preparingOrders.length === 0 ? (
+                    <p className="text-amber-100 text-center py-10 font-bold">備餐區順暢中</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-4">
+                      {preparingOrders.map(o => (
+                        <div key={o.firestoreId || o.id} className="bg-amber-600 text-amber-100 font-mono font-black text-3xl px-5 py-2 rounded-2xl">
+                          {o.seq}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 攤位 QR Code Modal */}
+          {showQrModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl relative">
+                <button 
+                  onClick={() => setShowQrModal(false)}
+                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+                <h3 className="text-xl font-black text-amber-700">📱 顧客掃碼點餐</h3>
+                <p className="text-xs text-slate-500">出示此 QR Code 供現場顧客用手機掃描即可直接點餐！</p>
+                <div className="flex justify-center p-3 bg-amber-50 rounded-2xl border border-amber-200">
+                  <div ref={qrRef}></div>
+                </div>
+                <button
+                  onClick={() => setShowQrModal(false)}
+                  className="w-full bg-amber-500 text-white font-bold py-2.5 rounded-xl text-sm shadow"
+                >
+                  關閉視窗
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 湯底選單 Modal */}
+          {selectedItem && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center border-b pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{selectedItem.icon}</span>
+                    <h3 className="font-extrabold text-sm text-slate-800">{selectedItem.name}</h3>
+                  </div>
+                  <button onClick={() => setSelectedItem(null)} className="text-slate-400">
+                    <i className="fa-solid fa-xmark text-lg"></i>
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2">選擇湯底：</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedItem.options.map(opt => (
+                      <button
+                        key={opt}
+                        onClick={() => setSelectedOptions([opt])}
+                        className={`px-3 py-1.5 text-xs rounded-xl font-bold border transition-all ${
+                          selectedOptions.includes(opt)
+                            ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-amber-50'
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t flex justify-between items-center">
+                  <span className="font-black text-xl text-amber-600">${selectedItem.price}</span>
+                  <button
+                    onClick={addToCart}
+                    className="bg-amber-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow"
+                  >
+                    加入購物車
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

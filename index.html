@@ -130,6 +130,13 @@
           }
           prevOrderCountRef.current = fetched.length;
           setOrders(fetched);
+
+          // 即時同步更新顧客端自己畫面上那一筆訂單的狀態
+          setActiveOrder(prev => {
+            if (!prev) return null;
+            const updated = fetched.find(o => o.firestoreId === prev.firestoreId);
+            return updated ? updated : prev;
+          });
         });
 
         const unsubMenu = window.fs.onSnapshot(menuRef, (snapshot) => {
@@ -307,10 +314,12 @@
                   )}
                 </div>
                 {activeOrder && (
-                  <div className="bg-amber-500 text-white p-4 rounded-2xl shadow-lg">
-                    <div className="text-xs bg-amber-700/60 px-2 py-1 rounded font-mono inline-block mb-1">您的取餐序號</div>
+                  <div className={`p-4 rounded-2xl shadow-lg transition-all ${activeOrder.status === 'ready' ? 'bg-emerald-600 text-white animate-bounce' : 'bg-amber-500 text-white'}`}>
+                    <div className="text-xs bg-black/20 px-2 py-1 rounded font-mono inline-block mb-1">您的取餐序號</div>
                     <div className="text-2xl font-mono font-black">{activeOrder.seq}</div>
-                    <div className="text-xs mt-1">狀態：{activeOrder.status === 'ready' ? '🔔 請取餐！' : '⏳ 備餐中'}</div>
+                    <div className="text-xs mt-1 font-bold">
+                      {activeOrder.status === 'ready' ? '🔔 您的餐點已製作完成，請至攤位取餐！' : activeOrder.status === 'completed' ? '✅ 訂單已完成，謝謝惠顧！' : '⏳ 正在努力備餐中...'}
+                    </div>
                   </div>
                 )}
               </div>
@@ -364,7 +373,6 @@
                         <span className="text-xs text-slate-400">{order.time}</span>
                       </div>
                       
-                      {/* 稱呼與手機末三碼獨立分開排版 */}
                       <div className="flex justify-between items-center mb-2 bg-amber-50/60 px-2.5 py-1.5 rounded-xl border border-amber-100">
                         <span className="text-xs font-bold text-slate-800"><i className="fa-solid fa-user mr-1 text-amber-600"></i>{order.customerName}</span>
                         <span className="text-xs font-mono font-black text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-lg">電話末三碼: {order.phone}</span>

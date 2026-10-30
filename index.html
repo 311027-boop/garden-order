@@ -116,6 +116,23 @@
         } catch(e) {}
       };
 
+      // 手動重新整理取餐狀態函數
+      const manualRefreshStatus = async () => {
+        if (!activeOrder || !window.db || !window.fs) return;
+        try {
+          const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
+          const snapshot = await window.fs.getDocs(ordersRef);
+          const fetched = snapshot.docs.map(doc => ({ firestoreId: doc.id, ...doc.data() }));
+          const updated = fetched.find(o => o.firestoreId === activeOrder.firestoreId);
+          if (updated) {
+            setActiveOrder(updated);
+            alert(`狀態已更新：${updated.status === 'ready' ? '可取餐！' : updated.status === 'completed' ? '已完成' : '備餐中'}`);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
       useEffect(() => {
         if (!window.db || !window.fs) return;
         const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
@@ -131,7 +148,6 @@
           prevOrderCountRef.current = fetched.length;
           setOrders(fetched);
 
-          // 即時同步更新顧客端自己畫面上那一筆訂單的狀態
           setActiveOrder(prev => {
             if (!prev) return null;
             const updated = fetched.find(o => o.firestoreId === prev.firestoreId);
@@ -315,7 +331,10 @@
                 </div>
                 {activeOrder && (
                   <div className={`p-4 rounded-2xl shadow-lg transition-all ${activeOrder.status === 'ready' ? 'bg-emerald-600 text-white animate-bounce' : 'bg-amber-500 text-white'}`}>
-                    <div className="text-xs bg-black/20 px-2 py-1 rounded font-mono inline-block mb-1">您的取餐序號</div>
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="text-xs bg-black/20 px-2 py-1 rounded font-mono">您的取餐序號</div>
+                      <button onClick={manualRefreshStatus} className="text-[11px] bg-white/20 hover:bg-white/30 px-2 py-1 rounded font-bold">🔄 重新整理狀態</button>
+                    </div>
                     <div className="text-2xl font-mono font-black">{activeOrder.seq}</div>
                     <div className="text-xs mt-1 font-bold">
                       {activeOrder.status === 'ready' ? '🔔 您的餐點已製作完成，請至攤位取餐！' : activeOrder.status === 'completed' ? '✅ 訂單已完成，謝謝惠顧！' : '⏳ 正在努力備餐中...'}

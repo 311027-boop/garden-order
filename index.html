@@ -211,6 +211,7 @@
 
       const readyOrders = orders.filter(o => o.status === 'ready');
       const preparingOrders = orders.filter(o => o.status === 'preparing' || o.status === 'pending');
+      const hasUnfinishedOrders = preparingOrders.length > 0 || readyOrders.length > 0;
 
       return (
         <div className="max-w-5xl mx-auto p-4 md:p-6 pb-20">
@@ -230,7 +231,15 @@
                 </button>
                 <div className="flex bg-amber-100 p-1 rounded-xl gap-1">
                   <button onClick={() => setView('customer')} className={`px-3 py-1.5 rounded-lg font-bold text-xs ${view === 'customer' ? 'bg-amber-500 text-white shadow' : 'text-amber-800'}`}>顧客點餐區</button>
-                  <button onClick={() => setView('kitchen')} className={`px-3 py-1.5 rounded-lg font-bold text-xs ${view === 'kitchen' ? 'bg-amber-500 text-white shadow' : 'text-amber-800'}`}>賣家接單端</button>
+                  <div className="relative">
+                    <button onClick={() => setView('kitchen')} className={`px-3 py-1.5 rounded-lg font-bold text-xs ${view === 'kitchen' ? 'bg-amber-500 text-white shadow' : 'text-amber-800'}`}>賣家接單端</button>
+                    {hasUnfinishedOrders && (
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                      </span>
+                    )}
+                  </div>
                   <button onClick={() => setView('display')} className={`px-3 py-1.5 rounded-lg font-bold text-xs ${view === 'display' ? 'bg-amber-500 text-white shadow' : 'text-amber-800'}`}>叫號看板</button>
                 </div>
               </div>

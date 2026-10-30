@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>園遊會線上點餐系統</title>
+  <title>歡樂園遊會線上點餐與接單系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
@@ -58,6 +58,9 @@
     ];
 
     function App() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isCustomerUrl = urlParams.get('role') === 'customer';
+
       const [view, setView] = useState('customer');
       const [menu, setMenu] = useState(INITIAL_MENU);
       const [cart, setCart] = useState([]);
@@ -68,9 +71,32 @@
       const [activeOrder, setActiveOrder] = useState(null);
       const [selectedItem, setSelectedItem] = useState(null);
       const [selectedOptions, setSelectedOptions] = useState([]);
+      const [soundEnabled, setSoundEnabled] = useState(true);
+      const [showQrModal, setShowQrModal] = useState(false);
+      const [customerUrl, setCustomerUrl] = useState('');
       const [isSubmitting, setIsSubmitting] = useState(false);
 
-      // 監聽雲端資料
+      const qrRef = useRef(null);
+
+      useEffect(() => {
+        const baseUrl = window.location.origin + window.location.pathname;
+        setCustomerUrl(`${baseUrl}?role=customer`);
+      }, []);
+
+      useEffect(() => {
+        if (showQrModal && qrRef.current) {
+          qrRef.current.innerHTML = '';
+          new QRCode(qrRef.current, {
+            text: customerUrl,
+            width: 200,
+            height: 200,
+            colorDark: "#b45309",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        }
+      }, [showQrModal, customerUrl]);
+
       useEffect(() => {
         if (!window.db || !window.fs) return;
         const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
@@ -99,6 +125,18 @@
           const ref = window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'menu_status', itemId);
           await window.fs.setDoc(ref, { isSoldOut: !target.isSoldOut }, { merge: true });
         } catch (e) { console.error(e); }
+      };
+
+      const openOptionModal = (item) => {
+        if (item.isSoldOut) return;
+        setSelectedItem(item);
+        setSelectedOptions([item.options[0]]);
+      };
+
+      const addToCart = () => {
+        if (!selectedItem) return;
+        setCart([...cart, { cartId: Date.now() + Math.random(), ...selectedItem, options: [...selectedOptions] }]);
+        setSelectedItem(null);
       };
 
       const submitOrder = async (e) => {
@@ -131,69 +169,150 @@
         }
       };
 
+      const updateStatus = async (firestoreId, nextStatus) => {
+        try {
+          await window.fs.updateDoc(window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'orders', firestoreId), { status: nextStatus });
+        } catch (e) { console.error(e); }
+      };
+
+      const clearOrders = async () => {
+        if (window.confirm("確定清空所有訂單嗎？")) {
+          try {
+            for (const o of orders) {
+              await window.fs.deleteDoc(window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'orders', o.firestoreId));
+            }
+          } catch(e) { console.error(e); }
+        }
+      };
+
+      const readyOrders = orders.filter(o => o.status === 'ready');
+      const preparingOrders = orders.filter(o => o.status === 'preparing' || o.status === 'pending');
+      const completedOrders = orders.filter(o => o.status === 'completed');
+
       return (
-        <div className="max-w-4xl mx-auto p-4 pb-20">
-          <header className="flex justify-between items-center bg-white p-4 rounded-2xl shadow-md mb-6">
-            <h1 className="text-xl font-black text-amber-700">🍢 園遊會點餐系統</h1>
-            <div className="flex gap-2">
-              <button onClick={() => setView('customer')} className={`px-3 py-1.5 rounded-xl font-bold text-xs ${view === 'customer' ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-800'}`}>顧客點餐</button>
-              <button onClick={() => setView('kitchen')} className={`px-3 py-1.5 rounded-xl font-bold text-xs ${view === 'kitchen' ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-800'}`}>賣家接單</button>
+        <div className="max-w-5xl mx-auto p-4 md:p-6 pb-20">
+          <header className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-2xl shadow-md border-b-4 border-amber-400 mb-6 gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-4xl animate-bounce">🍢</span>
+              <div>
+                <h1 className="text-xl md:text-2xl font-black text-amber-700">歡樂園遊會線上點餐系統</h1>
+                <p className="text-xs text-slate-500 font-medium">免桌號 ‧ 掃碼點餐 ‧ 專屬序號取餐</p>
+              </div>
             </div>
+
+            {!isCustomerUrl && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={() => setShowQrModal(true)} className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all flex items-center gap-1.5">
+                  <i className="fa-solid fa-qrcode"></i> 攤位點餐 QR Code
+                </button>
+                <div className="flex bg-amber-100 p-1 rounded-xl gap-1">
+                  <button onClick={() => setView('customer')} className={`px-3 py-1.5 rounded-lg font-bold text-xs ${view === 'customer' ? 'bg-amber-500 text-white shadow' : 'text-amber-800'}`}>顧客點餐區</button>
+                  <button onClick={() => setView('kitchen')} className={`px-3 py-1.5 rounded-lg font-bold text-xs ${view === 'kitchen' ? 'bg-amber-500 text-white shadow' : 'text-amber-800'}`}>賣家接單端</button>
+                  <button onClick={() => setView('display')} className={`px-3 py-1.5 rounded-lg font-bold text-xs ${view === 'display' ? 'bg-amber-500 text-white shadow' : 'text-amber-800'}`}>叫號看板</button>
+                </div>
+              </div>
+            )}
           </header>
 
-          {view === 'customer' ? (
+          {(view === 'customer' || isCustomerUrl) && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="md:col-span-2 space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {menu.map(item => (
-                    <div key={item.id} className={`bg-white p-4 rounded-2xl border ${item.isSoldOut ? 'opacity-60 bg-slate-100' : ''}`}>
-                      <div className="text-2xl">{item.icon}</div>
-                      <h3 className="font-bold text-sm">{item.name} {item.isSoldOut && <span className="text-red-500 text-xs">(已售罄)</span>}</h3>
-                      <p className="text-xs text-slate-400">{item.desc}</p>
-                      <div className="flex justify-between items-center mt-3">
-                        <span className="font-bold text-amber-600">${item.price}</span>
-                        <button 
-                          disabled={item.isSoldOut}
-                          onClick={() => setCart([...cart, { cartId: Math.random(), ...item, options: ['原味高湯'] }])}
-                          className="bg-amber-500 disabled:bg-slate-300 text-white text-xs font-bold px-3 py-1.5 rounded-xl"
-                        >
-                          加入
-                        </button>
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {['全部', '主食', '關東煮', '蔬菜', '套餐'].map(cat => (
+                    <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${selectedCategory === cat ? 'bg-amber-500 text-white shadow' : 'bg-white text-slate-600'}`}>{cat}</button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {menu.filter(i => selectedCategory === '全部' || i.category === selectedCategory).map(item => (
+                    <div key={item.id} className={`bg-white p-4 rounded-2xl border flex flex-col justify-between ${item.isSoldOut ? 'opacity-60 bg-slate-100' : 'border-amber-100'}`}>
+                      <div>
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-3xl">{item.icon}</span>
+                          <span className="font-extrabold text-amber-600">${item.price}</span>
+                        </div>
+                        <h3 className="font-bold text-slate-800 text-sm">{item.name} {item.isSoldOut && <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full">已售罄</span>}</h3>
+                        <p className="text-[11px] text-slate-400 mt-1">{item.desc}</p>
                       </div>
+                      <button disabled={item.isSoldOut} onClick={() => openOptionModal(item)} className="mt-3 w-full bg-amber-500 disabled:bg-slate-300 text-white text-xs font-bold py-2 rounded-xl shadow">
+                        {item.isSoldOut ? '已售罄' : '選擇湯底選購'}
+                      </button>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="bg-white p-4 rounded-2xl shadow-md space-y-3">
-                <h2 className="font-bold text-sm">🛒 購物車 ({cart.length})</h2>
-                {cart.map(i => (
-                  <div key={i.cartId} className="flex justify-between text-xs bg-amber-50 p-2 rounded-lg">
-                    <span>{i.icon} {i.name}</span>
-                    <span className="font-bold">${i.price}</span>
+              <div className="space-y-4">
+                <div className="bg-white p-4 rounded-2xl shadow-md border-2 border-amber-200">
+                  <h2 className="font-black text-sm text-slate-800 mb-3 flex items-center gap-2">
+                    <i className="fa-solid fa-basket-shopping text-amber-500"></i> 已選購餐點 ({cart.length})
+                  </h2>
+                  {cart.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-6">購物車是空的，快加入美食吧！</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {cart.map(i => (
+                        <div key={i.cartId} className="flex justify-between items-center text-xs bg-amber-50 p-2 rounded-xl">
+                          <div>
+                            <div className="font-bold">{i.icon} {i.name}</div>
+                            <div className="text-[10px] text-amber-700">[{i.options.join('/')}]</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-amber-600">${i.price}</span>
+                            <button onClick={() => setCart(cart.filter(x => x.cartId !== i.cartId))} className="text-slate-300 hover:text-red-500"><i className="fa-solid fa-xmark"></i></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {cart.length > 0 && (
+                    <form onSubmit={submitOrder} className="mt-3 space-y-2 pt-3 border-t">
+                      <input type="text" placeholder="您的稱呼 (例: 王小明)" value={customerName} onChange={e => setCustomerName(e.target.value)} required className="w-full text-xs p-2 border rounded-xl" />
+                      <input type="tel" placeholder="手機末三碼 (例: 888)" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} required className="w-full text-xs p-2 border rounded-xl" />
+                      <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold py-2.5 rounded-xl text-xs shadow">
+                        {isSubmitting ? '傳送中...' : '送出訂單'}
+                      </button>
+                    </form>
+                  )}
+                </div>
+                {activeOrder && (
+                  <div className="bg-amber-500 text-white p-4 rounded-2xl shadow-lg">
+                    <div className="text-xs bg-amber-700/60 px-2 py-1 rounded font-mono inline-block mb-1">您的取餐序號</div>
+                    <div className="text-2xl font-mono font-black">{activeOrder.seq}</div>
+                    <div className="text-xs mt-1">狀態：{activeOrder.status === 'ready' ? '🔔 請取餐！' : '⏳ 備餐中'}</div>
                   </div>
-                ))}
-                {cart.length > 0 && (
-                  <form onSubmit={submitOrder} className="space-y-2 pt-2 border-t">
-                    <input type="text" placeholder="稱呼" value={customerName} onChange={e => setCustomerName(e.target.value)} required className="w-full text-xs p-2 border rounded-lg" />
-                    <input type="tel" placeholder="手機末三碼" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} required className="w-full text-xs p-2 border rounded-lg" />
-                    <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl">送出訂單</button>
-                  </form>
                 )}
-                {activeOrder && <div className="bg-amber-500 text-white p-3 rounded-xl text-xs">您的序號：<span className="text-lg font-mono font-bold">{activeOrder.seq}</span></div>}
               </div>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-white p-4 rounded-2xl shadow-md">
-                <h3 className="text-xs font-bold text-slate-600 mb-2">🛠️ 點擊按鈕即時切換售罄狀態：</h3>
+          )}
+
+          {view === 'kitchen' && !isCustomerUrl && (
+            <div className="space-y-6">
+              <div className="bg-white p-4 rounded-2xl shadow-md flex flex-wrap justify-between items-center gap-4">
+                <div className="flex gap-2">
+                  <button onClick={() => setSoundEnabled(!soundEnabled)} className={`text-xs px-3 py-1.5 rounded-xl font-bold ${soundEnabled ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-400'}`}>
+                    <i className="fa-solid fa-bell mr-1"></i> 提示音：{soundEnabled ? '開' : '關'}
+                  </button>
+                  <button onClick={clearOrders} className="text-xs px-3 py-1.5 rounded-xl font-bold bg-red-50 text-red-600 hover:bg-red-100">
+                    <i className="fa-solid fa-trash-can mr-1"></i> 重置訂單
+                  </button>
+                </div>
+                <div className="flex gap-3">
+                  <div className="bg-amber-50 px-3 py-1.5 rounded-xl border text-center">
+                    <span className="text-[10px] text-slate-500 block">今日營業額</span>
+                    <span className="text-sm font-black text-amber-600">${orders.reduce((s, o) => s + (o.total || 0), 0)}</span>
+                  </div>
+                  <div className="bg-emerald-50 px-3 py-1.5 rounded-xl border text-center">
+                    <span className="text-[10px] text-slate-500 block">待取餐筆數</span>
+                    <span className="text-sm font-black text-emerald-600">{readyOrders.length} 筆</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl shadow-md space-y-2">
+                <h3 className="text-xs font-black text-slate-700">🛠️ 餐點庫存與售罄管理 (點擊按鈕一鍵切換)</h3>
                 <div className="flex flex-wrap gap-2">
                   {menu.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => toggleSoldOut(item.id)}
-                      className={`text-xs font-bold px-3 py-2 rounded-xl border ${item.isSoldOut ? 'bg-red-500 text-white' : 'bg-emerald-50 text-emerald-700'}`}
-                    >
+                    <button key={item.id} onClick={() => toggleSoldOut(item.id)} className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all ${item.isSoldOut ? 'bg-red-500 text-white' : 'bg-emerald-50 text-emerald-700'}`}>
                       {item.icon} {item.name}：{item.isSoldOut ? '已售罄 (點此上架)' : '供應中 (點此售罄)'}
                     </button>
                   ))}
@@ -201,16 +320,109 @@
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {orders.map(o => (
-                  <div key={o.firestoreId} className="bg-white p-4 rounded-2xl shadow-md border">
-                    <div className="font-mono text-xl font-black text-amber-600">{o.seq} - {o.customerName}</div>
-                    <div className="text-xs text-slate-500 my-1">金額：${o.total}</div>
-                    <div className="flex gap-1 mt-2">
-                      <button onClick={async () => await window.fs.updateDoc(window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'orders', o.firestoreId), { status: 'ready' })} className="bg-emerald-500 text-white text-xs px-2 py-1 rounded-lg">可取餐</button>
-                      <button onClick={async () => await window.fs.updateDoc(window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'orders', o.firestoreId), { status: 'completed' })} className="bg-slate-400 text-white text-xs px-2 py-1 rounded-lg">完成</button>
+                {orders.map(order => (
+                  <div key={order.firestoreId} className={`p-4 rounded-2xl shadow-md border-2 bg-white ${order.status === 'ready' ? 'border-emerald-500 bg-emerald-50/30' : order.status === 'preparing' ? 'border-amber-400' : 'border-slate-200'}`}>
+                    <div className="flex justify-between items-center mb-2 pb-2 border-b">
+                      <span className="text-lg font-black bg-amber-500 text-white px-2.5 py-0.5 rounded-xl font-mono">{order.seq}</span>
+                      <span className="text-xs text-slate-400">{order.time}</span>
+                    </div>
+                    <div className="text-xs font-bold text-slate-700 mb-2">{order.customerName} ({order.phone})</div>
+                    <div className="space-y-1 mb-3 bg-slate-50 p-2 rounded-xl text-xs">
+                      {order.items?.map((it, idx) => (
+                        <div key={idx} className="flex justify-between">
+                          <span>{it.icon} {it.name} <span className="text-amber-700 text-[10px]">({it.options?.join('/')})</span></span>
+                          <span className="font-bold">${it.price}</span>
+                        </div>
+                      ))}
+                      <div className="border-t pt-1 flex justify-between font-black text-amber-600">
+                        <span>合計</span>
+                        <span>${order.total}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1">
+                      <button onClick={() => updateStatus(order.firestoreId, 'preparing')} className={`text-[11px] font-bold py-1.5 rounded-lg ${order.status === 'preparing' ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600'}`}>製作中</button>
+                      <button onClick={() => updateStatus(order.firestoreId, 'ready')} className={`text-[11px] font-bold py-1.5 rounded-lg ${order.status === 'ready' ? 'bg-emerald-500 text-white animate-bounce' : 'bg-slate-100 text-slate-600'}`}>可取餐</button>
+                      <button onClick={() => updateStatus(order.firestoreId, 'completed')} className={`text-[11px] font-bold py-1.5 rounded-lg ${order.status === 'completed' ? 'bg-slate-400 text-white' : 'bg-slate-100 text-slate-600'}`}>完成</button>
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {view === 'display' && !isCustomerUrl && (
+            <div className="bg-slate-900 text-white rounded-3xl p-6 md:p-10 shadow-2xl min-h-[65vh] flex flex-col justify-between">
+              <div className="text-center mb-6 border-b border-slate-800 pb-4">
+                <h2 className="text-3xl md:text-4xl font-black text-amber-400">📢 園遊會現場叫號看板</h2>
+                <p className="text-slate-400 text-xs md:text-sm mt-1">請憑取餐序號至攤位領取美食</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-auto">
+                <div className="bg-emerald-950/60 border-2 border-emerald-500 rounded-2xl p-5 text-center">
+                  <h3 className="text-emerald-400 text-xl font-bold mb-4 flex items-center justify-center gap-2">
+                    <span className="animate-bounce">🔔</span> 請取餐 (Ready)
+                  </h3>
+                  {readyOrders.length === 0 ? (
+                    <p className="text-slate-500 text-sm py-6">目前無待取餐號碼</p>
+                  ) : (
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {readyOrders.map(o => (
+                        <span key={o.firestoreId} className="text-4xl md:text-5xl font-black bg-emerald-500 text-white px-5 py-2 rounded-2xl font-mono animate-pulse">{o.seq}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="bg-amber-950/40 border-2 border-amber-500/40 rounded-2xl p-5 text-center">
+                  <h3 className="text-amber-400 text-xl font-bold mb-4">🍳 備餐中 (Preparing)</h3>
+                  {preparingOrders.length === 0 ? (
+                    <p className="text-slate-500 text-sm py-6">備餐區順暢中</p>
+                  ) : (
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {preparingOrders.map(o => (
+                        <span key={o.firestoreId} className="text-2xl md:text-3xl font-bold bg-slate-800 text-amber-300 px-3 py-1.5 rounded-xl font-mono">{o.seq}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showQrModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-3 shadow-2xl relative">
+                <button onClick={() => setShowQrModal(false)} className="absolute top-3 right-3 text-slate-400 hover:text-slate-600"><i className="fa-solid fa-xmark text-lg"></i></button>
+                <h3 className="text-lg font-bold text-amber-700">📱 顧客點餐 QR Code</h3>
+                <p className="text-xs text-slate-500">掃描此 QR Code 即可進入點餐頁面</p>
+                <div className="flex justify-center p-3 bg-amber-50 rounded-2xl border border-amber-200">
+                  <div ref={qrRef}></div>
+                </div>
+                <button onClick={() => setShowQrModal(false)} className="w-full bg-amber-500 text-white font-bold py-2 rounded-xl text-xs">關閉視窗</button>
+              </div>
+            </div>
+          )}
+
+          {selectedItem && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl space-y-4">
+                <div className="flex justify-between items-center border-b pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{selectedItem.icon}</span>
+                    <h3 className="font-extrabold text-sm text-slate-800">{selectedItem.name}</h3>
+                  </div>
+                  <button onClick={() => setSelectedItem(null)} className="text-slate-400"><i className="fa-solid fa-xmark"></i></button>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2">選擇湯底：</label>
+                  <div className="flex gap-2">
+                    {selectedItem.options.map(opt => (
+                      <button key={opt} onClick={() => setSelectedOptions([opt])} className={`px-3 py-1.5 text-xs rounded-xl font-bold border ${selectedOptions.includes(opt) ? 'bg-amber-500 text-white border-amber-500' : 'bg-slate-50 text-slate-600'}`}>{opt}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="pt-2 border-t flex justify-between items-center">
+                  <span className="font-black text-xl text-amber-600">${selectedItem.price}</span>
+                  <button onClick={addToCart} className="bg-amber-500 text-white font-bold px-4 py-2 rounded-xl text-xs">加入購物車</button>
+                </div>
               </div>
             </div>
           )}

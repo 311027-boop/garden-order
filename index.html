@@ -23,7 +23,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAC_ariYuuW3a-DKyO20ZFwbFlvb2SZm_0",
@@ -57,24 +57,24 @@
     window.db = db;
     window.auth = auth;
     window.appId = appId;
-    window.fs = { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, getDocs };
+    window.fs = { collection, onSnapshot, addDoc, updateDoc, doc, deleteDoc, getDocs, setDoc };
   </script>
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
     const INITIAL_MENU = [
-      { id: 'p1', name: '甜不辣', category: '關東煮', price: 25, icon: '🍢', desc: '1個 / 口感Q彈入味，關東煮必點經典選擇。', options: ['原味高湯', '麻辣湯底'] },
-      { id: 'p2', name: '高麗菜捲', category: '蔬菜', price: 40, icon: '🥬', desc: '1個 / 清甜高麗菜包裹鮮美肉餡，吸滿濃郁湯汁。', options: ['原味高湯', '麻辣湯底'] },
-      { id: 'p3', name: '蛋餃', category: '關東煮', price: 35, icon: '🥟', desc: '2個 / 金黃蛋皮包覆香濃內餡，香氣十足。', options: ['原味高湯', '麻辣湯底'] },
-      { id: 'p4', name: '貢丸', category: '關東煮', price: 35, icon: '🍡', desc: '3個 / 紮實彈牙，爆汁鮮美，經典美味。', options: ['原味高湯', '麻辣湯底'] },
-      { id: 'p5', name: '竹輪', category: '關東煮', price: 35, icon: '🍥', desc: '2個 / 日式經典竹輪，吸飽湯汁超入味。', options: ['原味高湯', '麻辣湯底'] },
-      { id: 'p6', name: '豬血糕', category: '關東煮', price: 25, icon: '🪵', desc: '1個 / 軟糯入味，吸收湯頭精華，老饕最愛。', options: ['原味高湯', '麻辣湯底'] },
-      { id: 'p7', name: '蘿蔔', category: '蔬菜', price: 20, icon: '🥕', desc: '1個 / 燉煮至透亮綿密，清甜多汁。', options: ['原味高湯', '麻辣湯底'] },
-      { id: 'p8', name: '玉米', category: '蔬菜', price: 25, icon: '🌽', desc: '1個 / 鮮甜金黃玉米，顆粒飽滿甜度高。', options: ['原味高湯', '麻辣湯底'] },
-      { id: 'p9', name: '王子麵', category: '主食', price: 25, icon: '🍜', desc: '1個 / 吸收麻辣/高湯精華的邪惡主食，填飽肚子首選！', options: ['原味高湯', '麻辣湯底'] },
-      { id: 'p10', name: '仁甫套餐', category: '套餐', price: 75, icon: '🍱', desc: '組合包含：高麗菜捲*1 + 蘿蔔*1 + 玉米*1', options: ['原味高湯', '麻辣湯底'] },
-      { id: 'p11', name: '呷飽飽套餐', category: '套餐', price: 150, icon: '🍲', desc: '超值澎湃！包含：貢丸*3 + 蛋餃*2 + 玉米*1 + 高麗菜捲*1 + 王子麵*1', options: ['原味高湯', '麻辣湯底'] }
+      { id: 'p1', name: '甜不辣', category: '關東煮', price: 25, icon: '🍢', desc: '1個 / 口感Q彈入味，關東煮必點經典選擇。', options: ['原味高湯', '麻辣湯底'], isSoldOut: false },
+      { id: 'p2', name: '高麗菜捲', category: '蔬菜', price: 40, icon: '🥬', desc: '1個 / 清甜高麗菜包裹鮮美肉餡，吸滿濃郁湯汁。', options: ['原味高湯', '麻辣湯底'], isSoldOut: false },
+      { id: 'p3', name: '蛋餃', category: '關東煮', price: 35, icon: '🥟', desc: '2個 / 金黃蛋皮包覆香濃內餡，香氣十足。', options: ['原味高湯', '麻辣湯底'], isSoldOut: false },
+      { id: 'p4', name: '貢丸', category: '關東煮', price: 35, icon: '🍡', desc: '3個 / 紮實彈牙，爆汁鮮美，經典美味。', options: ['原味高湯', '麻辣湯底'], isSoldOut: false },
+      { id: 'p5', name: '竹輪', category: '關東煮', price: 35, icon: '🍥', desc: '2個 / 日式經典竹輪，吸飽湯汁超入味。', options: ['原味高湯', '麻辣湯底'], isSoldOut: false },
+      { id: 'p6', name: '豬血糕', category: '關東煮', price: 25, icon: '🪵', desc: '1個 / 軟糯入味，吸收湯頭精華，老饕最愛。', options: ['原味高湯', '麻辣湯底'], isSoldOut: false },
+      { id: 'p7', name: '蘿蔔', category: '蔬菜', price: 20, icon: '🥕', desc: '1個 / 燉煮至透亮綿密，清甜多汁。', options: ['原味高湯', '麻辣湯底'], isSoldOut: false },
+      { id: 'p8', name: '玉米', category: '蔬菜', price: 25, icon: '🌽', desc: '1個 / 鮮甜金黃玉米，顆粒飽滿甜度高。', options: ['原味高湯', '麻辣湯底'], isSoldOut: false },
+      { id: 'p9', name: '王子麵', category: '主食', price: 25, icon: '🍜', desc: '1個 / 吸收麻辣/高湯精華的邪惡主食，填飽肚子首選！', options: ['原味高湯', '麻辣湯底'], isSoldOut: false },
+      { id: 'p10', name: '仁甫套餐', category: '套餐', price: 75, icon: '🍱', desc: '組合包含：高麗菜捲*1 + 蘿蔔*1 + 玉米*1', options: ['原味高湯', '麻辣湯底'], isSoldOut: false },
+      { id: 'p11', name: '呷飽飽套餐', category: '套餐', price: 150, icon: '🍲', desc: '超值澎湃！包含：貢丸*3 + 蛋餃*2 + 玉米*1 + 高麗菜捲*1 + 王子麵*1', options: ['原味高湯', '麻辣湯底'], isSoldOut: false }
     ];
 
     function App() {
@@ -82,7 +82,7 @@
       const isCustomerUrl = urlParams.get('role') === 'customer';
 
       const [view, setView] = useState('customer'); 
-      const [menu] = useState(INITIAL_MENU);
+      const [menu, setMenu] = useState(INITIAL_MENU);
       const [cart, setCart] = useState([]);
       const [orders, setOrders] = useState([]);
       const [selectedCategory, setSelectedCategory] = useState('全部');
@@ -136,13 +136,15 @@
         } catch(e){}
       };
 
+      // 監聽雲端訂單與菜單狀態
       useEffect(() => {
         if (!window.db || !window.fs) return;
 
         const { collection, onSnapshot } = window.fs;
         const ordersRef = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
+        const menuRef = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'menu_status');
 
-        const unsubscribe = onSnapshot(ordersRef, (snapshot) => {
+        const unsubOrders = onSnapshot(ordersRef, (snapshot) => {
           const fetchedOrders = snapshot.docs.map(docSnap => ({
             firestoreId: docSnap.id,
             ...docSnap.data()
@@ -158,21 +160,43 @@
             playBellSound();
           }
           prevOrderCountRef.current = fetchedOrders.length;
-
           setOrders(fetchedOrders);
-
-          if (activeOrder) {
-            const current = fetchedOrders.find(o => o.firestoreId === activeOrder.firestoreId || o.id === activeOrder.id);
-            if (current) setActiveOrder(current);
-          }
-        }, (err) => {
-          console.error("Firestore 監聽失敗:", err);
         });
 
-        return () => unsubscribe();
-      }, [soundEnabled, activeOrder?.firestoreId]);
+        const unsubMenu = onSnapshot(menuRef, (snapshot) => {
+          const soldOutMap = {};
+          snapshot.docs.forEach(doc => {
+            soldOutMap[doc.id] = doc.data().isSoldOut;
+          });
+
+          setMenu(prevMenu => prevMenu.map(item => ({
+            ...item,
+            isSoldOut: soldOutMap[item.id] !== undefined ? soldOutMap[item.id] : false
+          })));
+        });
+
+        return () => {
+          unsubOrders();
+          unsubMenu();
+        };
+      }, [soundEnabled]);
+
+      // 切換餐點售罄狀態
+      const toggleSoldOut = async (itemId) => {
+        const targetItem = menu.find(i => i.id === itemId);
+        if (!targetItem) return;
+        const nextStatus = !targetItem.isSoldOut;
+
+        try {
+          const menuDocRef = window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'menu_status', itemId);
+          await window.fs.setDoc(menuDocRef, { isSoldOut: nextStatus }, { merge: true });
+        } catch (err) {
+          console.error("更新售罄狀態失敗:", err);
+        }
+      };
 
       const openOptionModal = (item) => {
+        if (item.isSoldOut) return;
         setSelectedItem(item);
         setSelectedOptions([item.options[0]]);
       };
@@ -259,8 +283,7 @@
         }
       };
 
-      const completedOrders = orders.filter(o => o.status === 'completed' || o.status === 'ready' || o.status === 'preparing');
-      const grandTotalRevenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
+      const grandTotalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
       const readyOrders = orders.filter(o => o.status === 'ready');
       const preparingOrders = orders.filter(o => o.status === 'preparing');
 
@@ -334,21 +357,33 @@
                   {menu
                     .filter(item => selectedCategory === '全部' || item.category === selectedCategory)
                     .map(item => (
-                      <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex flex-col justify-between hover:shadow-md transition-all group">
+                      <div key={item.id} className={`rounded-2xl p-4 shadow-sm border flex flex-col justify-between transition-all group ${item.isSoldOut ? 'bg-slate-100 border-slate-300 opacity-75' : 'bg-white border-amber-100 hover:shadow-md'}`}>
                         <div>
                           <div className="flex justify-between items-start mb-2">
                             <span className="text-4xl group-hover:scale-110 transition-transform">{item.icon}</span>
-                            <span className="font-extrabold text-amber-600 text-xl">${item.price}</span>
+                            <span className={`font-extrabold text-xl ${item.isSoldOut ? 'text-slate-400' : 'text-amber-600'}`}>${item.price}</span>
                           </div>
-                          <h3 className="font-bold text-slate-800 text-base">{item.name}</h3>
+                          <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+                            {item.name}
+                            {item.isSoldOut && <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full font-bold">已售罄</span>}
+                          </h3>
                           <p className="text-xs text-slate-500 mt-1 leading-relaxed">{item.desc}</p>
                         </div>
-                        <button
-                          onClick={() => openOptionModal(item)}
-                          className="mt-4 w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-sm font-bold py-2.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"
-                        >
-                          <i className="fa-solid fa-cart-plus text-xs"></i> 選擇湯底點餐
-                        </button>
+                        {item.isSoldOut ? (
+                          <button
+                            disabled
+                            className="mt-4 w-full bg-slate-300 text-slate-500 text-sm font-bold py-2.5 rounded-xl cursor-not-allowed"
+                          >
+                            🚫 已售罄
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openOptionModal(item)}
+                            className="mt-4 w-full bg-amber-500 hover:bg-amber-600 active:scale-95 text-white text-sm font-bold py-2.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5"
+                          >
+                            <i className="fa-solid fa-cart-plus text-xs"></i> 選擇湯底點餐
+                          </button>
+                        )}
                       </div>
                     ))}
                 </div>
@@ -476,6 +511,31 @@
                 </div>
               </div>
 
+              {/* 🛠️ 賣家端：菜單庫存管理區 */}
+              <div className="bg-white p-5 rounded-2xl shadow-md border border-amber-100 space-y-3">
+                <h3 className="text-sm font-black text-slate-700 flex items-center gap-2">
+                  <i className="fa-solid fa-utensils text-amber-500"></i> 餐點庫存與售罄管理 (點擊按鈕即可一鍵下架/上架)
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {menu.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => toggleSoldOut(item.id)}
+                      className={`text-xs font-bold px-3 py-2 rounded-xl border transition-all flex items-center gap-1.5 ${
+                        item.isSoldOut 
+                          ? 'bg-red-500 text-white border-red-600 shadow-inner' 
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <span>{item.icon} {item.name}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] ${item.isSoldOut ? 'bg-red-700 text-white' : 'bg-emerald-200 text-emerald-900'}`}>
+                        {item.isSoldOut ? '已售罄 (點擊上架)' : '供應中 (點擊售罄)'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {orders.length === 0 ? (
                 <div className="bg-white p-12 rounded-2xl text-center text-slate-400 shadow-sm border border-slate-100">
                   <p className="text-4xl mb-2">📋</p>
@@ -484,10 +544,11 @@
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {orders.map(order => {
-                    // 🌶️ 檢查是否有麻辣湯底
                     const isSpicy = order.items && order.items.some(item => 
                       item.options && item.options.some(opt => opt.includes('麻辣'))
                     );
+                    const isReady = order.status === 'ready';
+                    const isPreparing = order.status === 'preparing';
 
                     return (
                       <div 
@@ -497,8 +558,8 @@
                             ? 'bg-red-50 border-red-300 ring-2 ring-red-100 text-slate-800' 
                             : 'bg-white border-slate-200 text-slate-800'
                         } ${
-                          order.status === 'ready' ? '!border-emerald-500 !bg-emerald-50/40' :
-                          order.status === 'preparing' ? '!border-amber-400' : ''
+                          isReady ? '!border-emerald-500 !bg-emerald-50/40' :
+                          isPreparing ? '!border-amber-400' : ''
                         }`}
                       >
                         <div>
@@ -532,174 +593,4 @@
                               </div>
                             ))}
 
-                            <div className="border-t border-slate-200 pt-2 mt-2 flex justify-between font-black text-slate-800 text-xs">
-                              <span>合計金額</span>
-                              <span className="text-amber-600 text-sm">${order.total}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-1.5 pt-2">
-                          <button
-                            onClick={() => updateOrderStatus(order.id, 'preparing', order.firestoreId)}
-                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                              order.status === 'preparing' 
-                                ? 'bg-amber-500 text-white shadow' 
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                          >
-                            製作中
-                          </button>
-                          <button
-                            onClick={() => updateOrderStatus(order.id, 'ready', order.firestoreId)}
-                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                              order.status === 'ready' 
-                                ? 'bg-emerald-500 text-white shadow animate-bounce' 
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                          >
-                            可取餐
-                          </button>
-                          <button
-                            onClick={() => updateOrderStatus(order.id, 'completed', order.firestoreId)}
-                            className={`py-2 text-xs font-bold rounded-xl transition-all ${
-                              order.status === 'completed' 
-                                ? 'bg-slate-400 text-white' 
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                            }`}
-                          >
-                            已完成
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 視圖三：叫號大螢幕 */}
-          {view === 'display' && !isCustomerUrl && (
-            <div className="space-y-6">
-              <div className="bg-slate-900 text-white p-6 rounded-3xl text-center shadow-xl">
-                <h2 className="text-3xl font-black text-amber-400 mb-2">📢 園遊會現場叫號看板</h2>
-                <p className="text-sm text-slate-400">請憑您的「取餐序號」至攤位領取美味餐點！</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-emerald-500 text-white rounded-3xl p-6 shadow-lg">
-                  <h3 className="text-xl font-black mb-4 flex items-center gap-2 border-b border-emerald-400 pb-3">
-                    <i className="fa-solid fa-bell animate-bounce"></i> 請來取餐 (Ready)
-                  </h3>
-                  {readyOrders.length === 0 ? (
-                    <p className="text-emerald-100 text-center py-10 font-bold">目前無等候取餐序號</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-4">
-                      {readyOrders.map(o => (
-                        <div key={o.firestoreId || o.id} className="bg-white text-emerald-700 font-mono font-black text-4xl px-6 py-3 rounded-2xl shadow-md animate-pulse">
-                          {o.seq}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-amber-500 text-white rounded-3xl p-6 shadow-lg">
-                  <h3 className="text-xl font-black mb-4 flex items-center gap-2 border-b border-amber-400 pb-3">
-                    <i className="fa-solid fa-fire-burner"></i> 準備中 (Preparing)
-                  </h3>
-                  {preparingOrders.length === 0 ? (
-                    <p className="text-amber-100 text-center py-10 font-bold">備餐區順暢中</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-4">
-                      {preparingOrders.map(o => (
-                        <div key={o.firestoreId || o.id} className="bg-amber-600 text-amber-100 font-mono font-black text-3xl px-5 py-2 rounded-2xl">
-                          {o.seq}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 攤位 QR Code Modal */}
-          {showQrModal && (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl relative">
-                <button 
-                  onClick={() => setShowQrModal(false)}
-                  className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg"
-                >
-                  <i className="fa-solid fa-xmark"></i>
-                </button>
-                <h3 className="text-xl font-black text-amber-700">📱 顧客掃碼點餐</h3>
-                <p className="text-xs text-slate-500">出示此 QR Code 供現場顧客用手機掃描即可直接點餐！</p>
-                <div className="flex justify-center p-3 bg-amber-50 rounded-2xl border border-amber-200">
-                  <div ref={qrRef}></div>
-                </div>
-                <button
-                  onClick={() => setShowQrModal(false)}
-                  className="w-full bg-amber-500 text-white font-bold py-2.5 rounded-xl text-sm shadow"
-                >
-                  關閉視窗
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 湯底選單 Modal */}
-          {selectedItem && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl space-y-4">
-                <div className="flex justify-between items-center border-b pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{selectedItem.icon}</span>
-                    <h3 className="font-extrabold text-sm text-slate-800">{selectedItem.name}</h3>
-                  </div>
-                  <button onClick={() => setSelectedItem(null)} className="text-slate-400">
-                    <i className="fa-solid fa-xmark text-lg"></i>
-                  </button>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2">選擇湯底：</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedItem.options.map(opt => (
-                      <button
-                        key={opt}
-                        onClick={() => setSelectedOptions([opt])}
-                        className={`px-3 py-1.5 text-xs rounded-xl font-bold border transition-all ${
-                          selectedOptions.includes(opt)
-                            ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-amber-50'
-                        }`}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t flex justify-between items-center">
-                  <span className="font-black text-xl text-amber-600">${selectedItem.price}</span>
-                  <button
-                    onClick={addToCart}
-                    className="bg-amber-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow"
-                  >
-                    加入購物車
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
-</body>
-</html>
+                            <div className="border-t border-slate-20

@@ -11,8 +11,8 @@
   <!-- React & ReactDOM -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-  <!-- Babel for JSX -->
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <!-- Babel for JSX (已更新為最新 stable 版) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <!-- QRCode.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -23,10 +23,10 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, updateDoc, doc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
-      apiKey: "AIzaSyAC_ariYuuW3a-DKyO20ZFwbF1vb2SZm_0",
+      apiKey: "AIzaSyAC_ariYuuW3a-DKyO20ZFwbFlvb2SZm_0",
       authDomain: "garden-order-afeab.firebaseapp.com",
       projectId: "garden-order-afeab",
       storageBucket: "garden-order-afeab.firebasestorage.app",
@@ -56,15 +56,30 @@
 
     window.db = db;
     window.appId = appId;
-    window.fs = { collection, onSnapshot, updateDoc, doc, deleteDoc };
+    window.fs = { collection, onSnapshot, updateDoc, doc, deleteDoc, setDoc };
   </script>
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
+    const INITIAL_MENU = [
+      { id: 'p1', name: '甜不辣', icon: '🍢', isSoldOut: false },
+      { id: 'p2', name: '高麗菜捲', icon: '🥬', isSoldOut: false },
+      { id: 'p3', name: '蛋餃', icon: '🥟', isSoldOut: false },
+      { id: 'p4', name: '貢丸', icon: '🍡', isSoldOut: false },
+      { id: 'p5', name: '竹輪', icon: '🍥', isSoldOut: false },
+      { id: 'p6', name: '豬血糕', icon: '🪵', isSoldOut: false },
+      { id: 'p7', name: '蘿蔔', icon: '🥕', isSoldOut: false },
+      { id: 'p8', name: '玉米', icon: '🌽', isSoldOut: false },
+      { id: 'p9', name: '王子麵', icon: '🍜', isSoldOut: false },
+      { id: 'p10', name: '仁甫套餐', icon: '🍱', isSoldOut: false },
+      { id: 'p11', name: '呷飽飽套餐', icon: '🍲', isSoldOut: false }
+    ];
+
     function SellerApp() {
       const [viewMode, setViewMode] = useState('orders'); // 'orders' | 'display'
       const [orders, setOrders] = useState([]);
+      const [menu, setMenu] = useState(INITIAL_MENU);
       const [soundEnabled, setSoundEnabled] = useState(true);
       const [showQrModal, setShowQrModal] = useState(false);
 
@@ -92,42 +107,56 @@
         }
       };
 
-      // 即時監聽 Firebase 訂單資料
+      // 即時監聽 Firebase 訂單與菜單資料
       useEffect(() => {
         if (!window.db || !window.fs) return;
 
         const ordersRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'orders');
-        
-        const unsub = window.fs.onSnapshot(ordersRef, (snapshot) => {
+        const menuRef = window.fs.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'menu_status');
+
+        const unsubOrders = window.fs.onSnapshot(ordersRef, (snapshot) => {
           const fetched = snapshot.docs.map(docSnap => ({
             firestoreId: docSnap.id,
             ...docSnap.data()
           }));
 
-          // 核心修復：嚴格依據訂單序號 (seq) 由小到大（升冪）排序
           fetched.sort((a, b) => {
             const numA = Number(String(a.seq || '').replace(/\D/g, '')) || 0;
             const numB = Number(String(b.seq || '').replace(/\D/g, '')) || 0;
             return numA - numB;
           });
 
-          // 當有新訂單進入時發出聲響提示
           if (fetched.length > prevOrderCountRef.current && prevOrderCountRef.current !== 0) {
             playBellSound();
           }
           prevOrderCountRef.current = fetched.length;
-
           setOrders(fetched);
         }, (err) => console.error("賣家監聽訂單錯誤:", err));
 
-        return () => unsub();
+        const unsubMenu = window.fs.onSnapshot(menuRef, (snapshot) => {
+          const soldOutMap = {};
+          snapshot.docs.forEach(doc => {
+            soldOutMap[doc.id] = doc.data().isSoldOut;
+          });
+
+          setMenu(prevMenu => prevMenu.map(item => ({
+            ...item,
+            isSoldOut: soldOutMap[item.id] !== undefined ? soldOutMap[item.id] : false
+          })));
+        });
+
+        return () => {
+          unsubOrders();
+          unsubMenu();
+        };
       }, [soundEnabled]);
 
       // 生成 QR Code 彈窗
       useEffect(() => {
         if (showQrModal && qrRef.current) {
           qrRef.current.innerHTML = '';
-          const customerUrl = window.location.href.replace('seller.html', 'customer.html');
+          const baseUrl = window.location.origin + window.location.pathname.replace('seller.html', 'index.html');
+          const customerUrl = `${baseUrl}?role=customer`;
           new QRCode(qrRef.current, {
             text: customerUrl,
             width: 200,
@@ -138,6 +167,20 @@
           });
         }
       }, [showQrModal]);
+
+      // 切換售罄狀態
+      const toggleSoldOut = async (itemId) => {
+        const targetItem = menu.find(i => i.id === itemId);
+        if (!targetItem) return;
+        const nextStatus = !targetItem.isSoldOut;
+
+        try {
+          const menuDocRef = window.fs.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'menu_status', itemId);
+          await window.fs.setDoc(menuDocRef, { isSoldOut: nextStatus }, { merge: true });
+        } catch (err) {
+          console.error("更新售罄狀態失敗:", err);
+        }
+      };
 
       // 更新訂單狀態
       const updateOrderStatus = async (firestoreId, nextStatus) => {
@@ -169,7 +212,7 @@
       const activeOrders = orders.filter(o => o.status !== 'completed');
       const completedOrders = orders.filter(o => o.status === 'completed');
       const readyOrders = orders.filter(o => o.status === 'ready');
-      const grandTotalRevenue = completedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+      const grandTotalRevenue = orders.reduce((sum, o) => sum + (o.total || 0), 0);
 
       return (
         <div className="max-w-5xl mx-auto p-4 md:p-6 pb-20">
@@ -187,7 +230,7 @@
                 onClick={() => setShowQrModal(true)}
                 className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm"
               >
-                <i className="fa-solid fa-qrcode"></i> 印刷顧客點餐 QR Code
+                <i className="fa-solid fa-qrcode"></i> 顧客點餐 QR Code
               </button>
 
               <div className="flex bg-amber-100 p-1 rounded-xl gap-1">
@@ -238,6 +281,31 @@
                 </div>
               </div>
 
+              {/* 餐點售罄控制區 */}
+              <div className="bg-white p-5 rounded-2xl shadow-md border border-amber-100 space-y-3">
+                <h3 className="text-sm font-black text-slate-700 flex items-center gap-2">
+                  <i className="fa-solid fa-utensils text-amber-500"></i> 餐點庫存與售罄管理 (點擊切換下架/上架)
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {menu.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => toggleSoldOut(item.id)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-all flex items-center gap-1.5 ${
+                        item.isSoldOut 
+                          ? 'bg-red-500 text-white border-red-600' 
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <span>{item.icon} {item.name}</span>
+                      <span className={`px-1 rounded text-[10px] ${item.isSoldOut ? 'bg-red-700 text-white' : 'bg-emerald-200 text-emerald-900'}`}>
+                        {item.isSoldOut ? '售罄' : '供應中'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <h3 className="text-lg font-bold text-slate-700 mb-4">進行中訂單 ({activeOrders.length})</h3>
                 {activeOrders.length === 0 ? (
@@ -252,7 +320,6 @@
                       const isPreparing = order.status === 'preparing';
                       const isReady = order.status === 'ready';
 
-                      // 🌶️ 檢查是否為麻辣湯底
                       const isSpicy = order.items && order.items.some(item => 
                         item.options && item.options.some(opt => opt.includes('麻辣'))
                       );
@@ -434,7 +501,7 @@
                     <i className="fa-solid fa-xmark"></i>
                   </button>
                 </div>
-                <p className="text-xs text-slate-500">讓顧客掃描此 QR Code 即可進入 `customer.html` 開始點餐</p>
+                <p className="text-xs text-slate-500">讓顧客掃描此 QR Code 即可進行點餐</p>
                 <div className="flex justify-center p-4 bg-amber-50 rounded-2xl border border-amber-200">
                   <div ref={qrRef}></div>
                 </div>
